@@ -31,7 +31,7 @@ section: Tutorials
 
 ## Why using OVH NAS HA?
 
-With the default OVH Managed Kubernetes volumes, you cannot currently share a volume between multiple pods. If you would like to do so, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
+OVH Managed Kubernetes natively integrates Block Storage as Peristant volumes, this technology however may not be suited to some legacy or non cloud-native applications, requiring to share this persistant data accross different pods on multiple worker nodes (ReadWriteMany or RWX). If you would need to do so for part of your workloads, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server and multiple NFS volumes. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
 
 ## Before you begin
 
@@ -41,7 +41,9 @@ It also assumes you have an OVH NAS HA already available. If you don't, you can 
 
 You also need to have [Helm](https://docs.helm.sh/) installed on your workstation and your cluster, please refer to the [How to install Helm on OVHcloud Managed Kubernetes Service](../installing-helm/) tutorial.
 
-## Configuring the OVH NAS HA for Kubernetes
+## Creating a partition and granting your Managed Kubernetes Service access to it
+
+Your NAS-HA can expose multiple partitions, support a variety of protocols. Each partition is accessible only from a specific range of IPs. We will create one exposing NFS and make it accessible from your Kubernetes worker nodes.
 
 Access the UI for OVH NAS HA by clicking *NAS and CDN* menu in the [Server section of the OVH Control Panel](https://www.ovh.com/manager/dedicated)
 
@@ -72,6 +74,8 @@ You should now have something similar to this:
 In this example our `ZPOOL_IP` is `10.201.18.33`, our `ZPOOL_NAME` is `zpool-127659`, and our `PARTITION_NAME` is `kubernetes`. Please modify this accordingly in the later steps.
 
 ## Configuring Kubernetes to use our newly created NFS partition
+
+Your Kubernetes cluster need some additionnal piece of software to make use of the NFS partition. We will install those and then create a first volume, shared accross multiple pods.
 
 First, let's create a `values.yaml` configuration file for the NFS client provisioner Helm installation:
 
