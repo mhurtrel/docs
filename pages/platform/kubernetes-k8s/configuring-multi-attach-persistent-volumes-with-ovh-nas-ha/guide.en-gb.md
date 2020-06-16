@@ -31,7 +31,7 @@ section: Tutorials
 
 ## Why using OVH NAS HA?
 
-OVH Managed Kubernetes natively integrates Block Storage as Peristant volumes, this technology however may not be suited to some legacy or non cloud-native applications, requiring to share this persistant data accross different pods on multiple worker nodes (ReadWriteMany or RWX). If you would need to do so for part of your workloads, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server and multiple NFS volumes. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
+OVHcloud Managed Kubernetes natively integrates Block Storage as persistant volumes, this technology however may not be suited to some legacy or non cloud-native applications, requiring to share this persistant data accross different pods on multiple worker nodes (ReadWriteMany or RWX). If you would need to do so for part of your workloads, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server and multiple NFS volumes. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
 
 ## Before you begin
 
@@ -43,7 +43,7 @@ You also need to have [Helm](https://docs.helm.sh/) installed on your workstatio
 
 ## Creating a partition and granting your Managed Kubernetes Service access to it
 
-Your NAS-HA can expose multiple partitions, support a variety of protocols. Each partition is accessible only from a specific range of IPs. We will create one exposing NFS and make it accessible from your Kubernetes worker nodes.
+Your NAS-HA can expose multiple partitions, and supports a variety of protocols. Each partition is accessible only from a specific range of IPs. We will create one exposing NFS and make it accessible from your Kubernetes worker nodes.
 
 Access the UI for OVH NAS HA by clicking *NAS and CDN* menu in the [Server section of the OVH Control Panel](https://www.ovh.com/manager/dedicated)
 
