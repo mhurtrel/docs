@@ -31,7 +31,7 @@ section: Tutorials
 
 ## Why using OVH NAS HA?
 
-OVHcloud Managed Kubernetes natively integrates Block Storage as persistant volumes, this technology however may not be suited to some legacy or non cloud-native applications, requiring to share this persistant data accross different pods on multiple worker nodes (ReadWriteMany or RWX). If you would need to do so for part of your workloads, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server and multiple NFS volumes. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
+OVHcloud Managed Kubernetes natively integrates Block Storage as persistant volumes. This technology may however not be suited to some legacy or non cloud-native applications, often requiring to share this persistant data accross different pods on multiple worker nodes (ReadWriteMany or RWX). If you would need to do so for part of your workloads, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server and multiple NFS volumes. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
 
 ## Before you begin
 
