@@ -1,0 +1,218 @@
+---
+title: Configuring multi-attach persistent volumes with OVH NAS HA
+slug: Configuring-multi-attach-persistent-volumes-with-ovh-nas-ha
+excerpt: 'Find out how to configure a multi-attach persistent volume using OVH NAS HA'
+section: Tutorials
+---
+
+<style>
+ pre {
+     font-size: 14px;
+ }
+ pre.console {
+   background-color: #300A24;
+   color: #ccc;
+   font-family: monospace;
+   padding: 5px;
+   margin-bottom: 5px;
+ }
+ pre.console code {
+   border: solid 0px transparent;
+   font-family: monospace !important;
+   font-size: 0.75em;
+   color: #ccc;
+ }
+ .small {
+     font-size: 0.75em;
+ }
+</style>
+
+**Last updated June 8<sup>th</sup>, 2020.**
+
+## Why using OVH NAS HA?
+
+With the default OVH Managed Kubernetes volumes, you cannot currently share a volume between multiple pods. If you would like to do so, one of the solution is to use NFS volumes. [OVH NAS HA](https://www.ovh.com/fr/nas/) is a managed solution that let you configure easily a NFS server. In this tutorial we are going to see how to configure your OVH Managed Kubernetes cluster to use [OVH NAS HA](https://www.ovh.com/fr/nas/) as a NFS provider for [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
+
+## Before you begin
+
+This tutorial assumes that you already have a working [OVHcloud Managed Kubernetes](https://www.ovhcloud.com/en/public-cloud/kubernetes/) cluster, and some basic knowledge of how to operate it. If you want to know more on those topics, please look at the [deploying a Hello World application](../deploying-hello-world/) documentation.
+
+It also assumes you have an OVH NAS HA already available. If you don't, you can [order one in the OVH Control Panel](https://www.ovh.com/manager/dedicated/#/configuration/nas).
+
+You also need to have [Helm](https://docs.helm.sh/) installed on your workstation and your cluster, please refer to the [How to install Helm on OVHcloud Managed Kubernetes Service](../installing-helm/) tutorial.
+
+## Configuring the OVH NAS HA for Kubernetes
+
+Access the UI for OVH NAS HA by clicking *NAS and CDN* menu in the [Server section of the OVH Control Panel](https://www.ovh.com/manager/dedicated)
+
+Create a new NFS partition in your Zpool:
+
+![Create a NFS partition](images/create-nfs-partition.png){.thumbnail}
+
+Once the partition is created, we need to allow our Kubernetes nodes to access our newly created partition.
+
+Get our Kubernetes nodes IP:
+```bash
+kubectl get nodes -o jsonpath='{ $.items[*].status.addresses[?(@.type=="InternalIP")].address }'
+```
+
+<pre class="console"><code>$ kubectl get nodes -o jsonpath='{ $.items[*].status.addresses[?(@.type=="InternalIP")].address }'
+51.77.204.175 51.77.205.79
+</code></pre>
+
+Click on the *Manage Access* menu of our newly created partition:
+![Manage Access of the NFS partition](images/manage-nfs-partition-access.png){.thumbnail}
+
+Add our nodes IP one by one:
+![Allow nodes IP to access the NFS partition](images/manage-nfs-partition-access-ip.png){.thumbnail}
+
+You should now have something similar to this:
+![Zpool-configuration](images/manage-nfs-zpool.png){.thumbnail}
+
+In this example our `ZPOOL_IP` is `10.201.18.33`, our `ZPOOL_NAME` is `zpool-127659`, and our `PARTITION_NAME` is `kubernetes`. Please modify this accordingly in the later steps.
+
+## Configuring Kubernetes to use our newly created NFS partition
+
+First, let's create a `values.yaml` configuration file for the NFS client provisioner Helm installation:
+
+```yaml
+nfs:
+  server: '[ZPOOL_IP]'
+  path: '/[ZPOOL_NAME]/[PARTITION_NAME]'
+  mountOptions:
+    - tcp
+    - nfsvers=3
+storageClass:
+  name: nfs
+```
+
+And then install the `nfs-client-provisioner`:
+
+```bash
+helm install nfs-client-provisioner -n kube-system stable/nfs-client-provisioner -f values.yaml
+```
+
+<pre class="console"><code>$ helm install nfs-client-provisioner -n kube-system stable/nfs-client-provisioner -f values.yaml
+NAME: nfs-client-provisioner
+LAST DEPLOYED: Mon Jun  8 14:39:57 2020
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+</code></pre>
+
+Let's verify our installation:
+
+```bash
+kubectl get deploy nfs-client-provisioner -n kube-system
+```
+
+<pre class="console"><code>$ kubectl get deploy nfs-client-provisioner -n kube-system
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+nfs-client-provisioner   1/1     1            1           36s
+</code></pre>
+
+## Create and use a NFS persistent volume
+
+Let’s create a `nfs-persistent-volume-claim.yaml` file:
+
+```yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nfs-pvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+And apply this to create the persistent volume claim:
+
+```bash
+kubectl apply -f nfs-persistent-volume-claim.yaml
+```
+
+Let’s now create two Nginx pods using the persistent volume claim as their webroot folder. For this, let’s create a `nfs-nginx-pods.yaml` file:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-nginx-1
+  namespace: default
+spec:
+  volumes:
+    - name: nfs-volume
+      persistentVolumeClaim:
+        claimName: nfs-pvc
+  containers:
+    - name: nginx
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: nfs-volume
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-nginx-2
+  namespace: default
+spec:
+  volumes:
+    - name: nfs-volume
+      persistentVolumeClaim:
+        claimName: nfs-pvc
+  containers:
+    - name: nginx
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: nfs-volume
+```
+
+And apply this to create the Nginx pods:
+
+```bash
+kubectl apply -f nfs-nginx-pods.yaml
+```
+
+Let’s enter inside the first Nginx container to create a file on the NFSpresistent volume:
+
+```bash
+kubectl exec -it nfs-nginx-1 -n default -- bash
+```
+
+Create a new `index.html` file:
+
+```bash
+echo "NFS volume!" > /usr/share/nginx/html/index.html
+```
+
+And exit the Nginx container:
+
+```bash
+exit
+```
+
+Let’s try to access our new web page:
+
+```bash
+kubectl proxy
+```
+
+And open the URL [http://localhost:8001/api/v1/namespaces/default/pods/http:nfs-nginx-1:/proxy/](http://localhost:8001/api/v1/namespaces/default/pods/http:nfs-nginx-1:/proxy/)
+
+Now let’s try to see if the data is shared with the second pod. Open the URL [http://localhost:8001/api/v1/namespaces/default/pods/http:nfs-nginx-2:/proxy/](http://localhost:8001/api/v1/namespaces/default/pods/http:nfs-nginx-2:/proxy/)
